@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes, viewport-fit=cover">
+    <title>Авторазбор-44 • Б/У запчасти по артикулам</title>
+    <style>
+        * {
+            margin: 0; padding: 0; box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+            font-family: 'Segoe UI', Roboto, 'Helvetica Neue', system-ui, sans-serif;
+        }
+        body {
+            background: #0b1c2f;
+            display: flex; justify-content: center; align-items: flex-start;
+            min-height: 100vh; padding: 0;
+        }
+        .app {
+            width: 100%; max-width: 480px; background: #0f2339;
+            min-height: 100vh; box-shadow: 0 0 40px rgba(0,0,0,0.3);
+            display: flex; flex-direction: column; position: relative;
+            transition: max-width 0.3s ease; border-radius: 0;
+        }
+        @media (min-width: 768px) {
+            body { background: #091624; padding: 30px; }
+            .app {
+                max-width: 1200px; border-radius: 32px;
+                box-shadow: 0 8px 40px rgba(0,0,0,0.6);
+            }
+            .header { border-radius: 32px 32px 0 0; }
+            .parts-list {
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
+                gap: 24px; padding: 24px;
+            }
+            .card { flex-direction: column; align-items: flex-start; gap: 14px; padding: 20px; transition: transform 0.2s, box-shadow 0.2s; }
+            .card:hover { transform: translateY(-4px); box-shadow: 0 12px 28px rgba(0,0,0,0.4); }
+            .card-img { width: 100%; height: 180px; border-radius: 20px; }
+            .card-info { width: 100%; }
+            .card-actions { width: 100%; justify-content: space-between; margin-top: 12px; }
+            .search-section { padding: 24px 24px 12px 24px; top: 80px; }
+            .filters select, .filters .reset-btn { flex: 0 1 auto; min-width: 150px; }
+            .filters { gap: 14px; }
+            .modal-overlay { align-items: center; justify-content: center; }
+            .modal { border-radius: 32px; max-width: 560px; margin: auto; transform: scale(0.9); }
+            .active .modal { transform: scale(1); }
+            .detail-overlay { align-items: center; justify-content: center; }
+            .detail-modal { max-width: 560px; max-height: 80vh; }
+            .detail-main-image { height: 280px; }
+        }
+        @media (min-width: 1024px) {
+            .parts-list { grid-template-columns: repeat(4, 1fr); }
+        }
+        .header {
+            background: linear-gradient(135deg, #0b1c2f 0%, #132d47 100%);
+            color: white; padding: 18px 24px;
+            display: flex; align-items: center; justify-content: space-between;
+            position: sticky; top: 0; z-index: 20;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            border-bottom: 2px solid #f7931e;
+        }
+        .logo {
+            font-weight: 700; font-size: 1.5rem; letter-spacing: 0.5px;
+            display: flex; align-items: center; gap: 8px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+        .logo span { color: #f7931e; }
+        .auth-btn, .add-btn {
+            background: linear-gradient(135deg, #f7931e, #e67e22);
+            border: none; color: white; font-weight: bold;
+            border-radius: 24px; padding: 10px 18px; cursor: pointer;
+            transition: all 0.2s; box-shadow: 0 4px 12px rgba(247,147,30,0.4);
+            font-size: 0.95rem; letter-spacing: 0.3px;
+        }
+        .add-btn {
+            font-size: 1.8rem; width: 46px; height: 46px; padding: 0;
+            border-radius: 50%; display: none; align-items: center; justify-content: center;
+        }
+        .auth-btn:active, .add-btn:active { transform: scale(0.95); box-shadow: 0 2px 8px rgba(247,147,30,0.6); }
+        .logout-btn { background: linear-gradient(135deg, #e74c3c, #c0392b); box-shadow: 0 4px 12px rgba(231,76,60,0.4); }
+        .search-section {
+            background: rgba(15,35,57,0.95); backdrop-filter: blur(10px);
+            padding: 16px 20px 12px 20px;
+            position: sticky; top: 72px; z-index: 15;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+        }
+        .search-box {
+            display: flex; gap: 10px; background: rgba(255,255,255,0.08);
+            border-radius: 30px; padding: 4px 4px 4px 20px;
+            align-items: center; border: 1px solid rgba(255,255,255,0.12);
+            margin-bottom: 14px;
+        }
+        .search-box input {
+            flex: 1; border: none; background: transparent;
+            padding: 14px 0; font-size: 1rem; outline: none;
+            color: white;
+        }
+        .search-box input::placeholder { color: rgba(255,255,255,0.5); }
+        .search-box button {
+            background: #f7931e; border: none; color: white;
+            border-radius: 30px; padding: 12px 20px;
+            font-weight: 600; font-size: 0.9rem; cursor: pointer; white-space: nowrap;
+            transition: background 0.2s;
+        }
+        .search-box button:hover { background: #e67e22; }
+        .filters {
+            display: flex; flex-wrap: wrap; gap: 10px;
+            align-items: center; margin-bottom: 8px;
+        }
+        .filters select, .filters .reset-btn {
+            flex: 1 1 auto; padding: 12px 16px; border-radius: 30px;
+            border: 1px solid rgba(255,255,255,0.15); background: rgba(255,255,255,0.06);
+            color: white; font-size: 0.9rem; outline: none; appearance: none;
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="white"><path d="M6 9l6 6 6-6"/></svg>');
+            background-repeat: no-repeat; background-position: right 14px center;
+        }
+        .reset-btn {
+            background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.2);
+            color: white; font-weight: 500; background-image: none; text-align: center; cursor: pointer;
+        }
+        .price-filter { display: flex; gap: 8px; align-items: center; flex: 1 1 auto; min-width: 0; }
+        .price-input {
+            width: 100%; padding: 12px 8px; border-radius: 30px;
+            border: 1px solid rgba(255,255,255,0.15); background: rgba(255,255,255,0.06);
+            color: white; font-size: 0.9rem; outline: none; text-align: center;
+            appearance: textfield; -moz-appearance: textfield;
+        }
+        .price-input::placeholder { color: rgba(255,255,255,0.4); }
+        .fav-filter-btn {
+            background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 50%; width: 44px; height: 44px; font-size: 1.3rem;
+            cursor: pointer; display: flex; align-items: center; justify-content: center;
+            color: white;
+        }
+        .fav-filter-btn.active { background: #f7931e; border-color: #f7931e; }
+        .parts-list {
+            flex: 1; padding: 16px 16px 20px 16px;
+            display: flex; flex-direction: column; gap: 18px; overflow-y: auto;
+        }
+        .empty-state {
+            text-align: center; color: rgba(255,255,255,0.6);
+            padding: 80px 20px; font-size: 1.1rem;
+            grid-column: 1 / -1;
+        }
+        .card {
+            background: rgba(255,255,255,0.04); backdrop-filter: blur(5px);
+            border-radius: 24px; box-shadow: 0 6px 18px rgba(0,0,0,0.3);
+            padding: 14px; display: flex; gap: 16px; align-items: center;
+            border: 1px solid rgba(255,255,255,0.06); position: relative;
+            cursor: pointer; transition: transform 0.15s, background 0.2s;
+            color: white;
+        }
+        .card:active { transform: scale(0.98); background: rgba(255,255,255,0.06); }
+        .card-img {
+            width: 80px; height: 80px; background: rgba(255,255,255,0.06);
+            border-radius: 18px; background-size: cover; background-position: center;
+            flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+            font-size: 2rem; color: rgba(255,255,255,0.3);
+        }
+        .card-info { flex: 1; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+        .card-title { font-weight: 700; font-size: 1.1rem; color: white; }
+        .card-meta { display: flex; flex-wrap: wrap; gap: 6px; font-size: 0.8rem; }
+        .badge {
+            background: rgba(255,255,255,0.08); padding: 4px 12px; border-radius: 20px;
+            font-weight: 500; color: #ddd; font-size: 0.75rem;
+        }
+        .badge.article { background: rgba(247,147,30,0.15); color: #f7931e; font-weight: 600; }
+        .badge.category { background: rgba(46,125,50,0.2); color: #81c784; }
+        .price { font-weight: 700; font-size: 1.3rem; color: #f7931e; margin-top: 4px; }
+        .card-actions { display: flex; gap: 10px; align-items: center; }
+        .contact-btn {
+            background: #2AABEE; color: white; border: none;
+            border-radius: 20px; padding: 10px 16px; font-size: 0.85rem;
+            font-weight: 600; text-decoration: none; display: flex;
+            align-items: center; gap: 4px; cursor: pointer; transition: 0.2s;
+        }
+        .contact-btn:hover { background: #1d8ec9; }
+        .fav-btn {
+            background: none; border: none; font-size: 1.6rem; cursor: pointer;
+            padding: 4px; transition: transform 0.2s; color: #ddd;
+        }
+        .fav-btn:active { transform: scale(1.3); }
+        .delete-btn {
+            background: none; border: none; font-size: 1.6rem;
+            cursor: pointer; color: rgba(255,255,255,0.5); padding: 6px; border-radius: 50%;
+            transition: color 0.2s;
+        }
+        .delete-btn.visible { display: block; }
+        .delete-btn:hover { color: #ff6b6b; }
+
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.7); backdrop-filter: blur(8px);
+            z-index: 100; display: flex; align-items: flex-end; justify-content: center;
+            visibility: hidden; opacity: 0; transition: 0.25s ease;
+        }
+        .modal-overlay.active { visibility: visible; opacity: 1; }
+        .modal {
+            background: #132d47; color: white; width: 100%; max-width: 480px;
+            border-radius: 28px 28px 0 0; padding: 28px 24px 34px;
+            box-shadow: 0 -10px 40px rgba(0,0,0,0.5);
+            max-height: 85vh; overflow-y: auto;
+            transform: translateY(100%); transition: transform 0.3s;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .active .modal { transform: translateY(0); }
+        .modal h3 { font-size: 1.4rem; margin-bottom: 24px; color: white; }
+        .form-group { margin-bottom: 18px; display: flex; flex-direction: column; gap: 6px; }
+        .form-group label { font-weight: 600; font-size: 0.9rem; color: #b0c4de; }
+        .form-group input, .form-group select, .form-group textarea {
+            padding: 16px 18px; border-radius: 16px;
+            border: 1px solid rgba(255,255,255,0.15);
+            background: rgba(255,255,255,0.06); color: white;
+            font-size: 1rem; outline: none;
+        }
+        .form-group input::placeholder, .form-group textarea::placeholder { color: rgba(255,255,255,0.4); }
+        .form-row { display: flex; gap: 12px; }
+        .form-row .form-group { flex: 1; }
+        .modal-actions { display: flex; gap: 12px; margin-top: 24px; }
+        .btn {
+            flex: 1; padding: 16px; border-radius: 30px; font-weight: 700;
+            font-size: 1rem; border: none; cursor: pointer; transition: 0.2s;
+            letter-spacing: 0.3px;
+        }
+        .btn-primary { background: linear-gradient(135deg, #f7931e, #e67e22); color: white; box-shadow: 0 6px 16px rgba(247,147,30,0.4); }
+        .btn-secondary { background: rgba(255,255,255,0.1); color: white; border: 1px solid rgba(255,255,255,0.2); }
+        .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 8px 20px rgba(247,147,30,0.5); }
+        .file-input-label {
+            display: inline-block; padding: 12px 20px; background: rgba(255,255,255,0.08);
+            border-radius: 14px; font-size: 0.9rem; cursor: pointer;
+            border: 1px solid rgba(255,255,255,0.15); margin-top: 8px; color: white;
+        }
+        .photo-upload-area { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
+        .photo-upload-area .thumb {
+            width: 75px; height: 75px; border-radius: 14px;
+            background-size: cover; background-position: center; position: relative;
+        }
+        .photo-upload-area .thumb .remove {
+            position: absolute; top: -6px; right: -6px;
+            background: #ff4444; color: white; border-radius: 50%;
+            width: 24px; height: 24px; text-align: center; line-height: 24px;
+            font-size: 14px; cursor: pointer;
+        }
+
+        .detail-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.7); backdrop-filter: blur(8px);
+            z-index: 200; display: flex; align-items: flex-end; justify-content: center;
+            visibility: hidden; opacity: 0; transition: 0.2s ease;
+        }
+        @media (min-width: 768px) { .detail-overlay { align-items: center; } }
+        .detail-overlay.active { visibility: visible; opacity: 1; }
+        .detail-modal {
+            background: #132d47; width: 90%; max-width: 440px; max-height: 90vh;
+            border-radius: 28px; padding: 24px; overflow-y: auto;
+            box-shadow: 0 15px 50px rgba(0,0,0,0.5);
+            position: relative; color: white;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        @media (min-width: 768px) { .detail-modal { max-width: 560px; } }
+        .detail-close {
+            position: absolute; top: 16px; right: 20px;
+            background: none; border: none; font-size: 2rem;
+            cursor: pointer; color: rgba(255,255,255,0.7); line-height: 1;
+        }
+        .detail-main-image {
+            width: 100%; height: 240px; background: rgba(255,255,255,0.06);
+            border-radius: 20px; background-size: cover; background-position: center;
+            margin-bottom: 16px;
+        }
+        .detail-thumbnails { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 10px; margin-bottom: 18px; }
+        .detail-thumb {
+            width: 64px; height: 64px; border-radius: 14px; background-size: cover;
+            background-position: center; border: 2px solid transparent; cursor: pointer;
+            flex-shrink: 0; opacity: 0.6; transition: 0.2s;
+        }
+        .detail-thumb.active { border-color: #f7931e; opacity: 1; }
+        .detail-info h2 { font-size: 1.4rem; margin-bottom: 8px; }
+        .detail-meta { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+        .detail-description { color: #ccc; font-size: 0.95rem; line-height: 1.5; margin-bottom: 20px; }
+        .detail-actions { display: flex; gap: 12px; }
+
+        .auth-modal {
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: #132d47; padding: 28px; border-radius: 24px;
+            width: 90%; max-width: 380px; box-shadow: 0 15px 40px rgba(0,0,0,0.5);
+            z-index: 300; display: none; color: white;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .auth-modal.active { display: block; }
+        .auth-modal input {
+            width: 100%; margin-bottom: 14px; padding: 14px;
+            border-radius: 14px; border: 1px solid rgba(255,255,255,0.2);
+            background: rgba(255,255,255,0.08); color: white;
+        }
+        .auth-modal .btn { margin-top: 10px; }
+
+        .site-footer {
+            background: linear-gradient(0deg, #0b1c2f 0%, #132d47 100%);
+            color: #b0c4de; padding: 2.5rem 1.5rem 1.5rem; margin-top: auto;
+            font-size: 0.9rem; border-radius: 0 0 32px 32px;
+            border-top: 2px solid #f7931e;
+        }
+        .footer-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem 1rem; max-width: 1100px; margin: 0 auto 2rem; }
+        .footer-col h4 { color: white; font-size: 1.1rem; margin-bottom: 1rem; }
+        .footer-col p, .footer-col li { color: #b0c4de; line-height: 1.7; margin-bottom: 0.4rem; }
+        .footer-col a { color: #f7931e; }
+        .social-icons { display: flex; gap: 1rem; margin-top: 0.5rem; }
+        .social-icons a { display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; background: rgba(255,255,255,0.08); border-radius: 50%; font-size: 1.3rem; text-decoration: none; color: white; transition: 0.2s; }
+        .social-icons a:hover { background: #f7931e; transform: translateY(-3px); }
+        .footer-bottom { text-align: center; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 1.5rem; font-size: 0.8rem; color: #7a8a9a; }
+        @media (min-width: 768px) { .footer-grid { grid-template-columns: repeat(3, 1fr); } }
+        @media (min-width: 1024px) { .footer-grid { grid-template-columns: 2fr 1fr 1fr 1fr; } }
+    </style>
+</head>
+<body>
+<div class="app">
+    <header class="header">
+        <div class="logo">🚗 Авторазбор<span>.</span></div>
+        <div style="display: flex; gap: 8px;">
+            <button class="auth-btn" id="loginBtn">Войти</button>
+            <button class="auth-btn logout-btn" id="logoutBtn" style="display:none;">Выйти</button>
+            <button class="add-btn" id="openAddModalBtn" style="display:none;">+</button>
+        </div>
+    </header>
+
+    <div class="search-section">
+        <div class="search-box">
+            <input type="text" id="searchInput" placeholder="Артикул, название, код двигателя...">
+            <button id="searchBtn">🔍</button>
+        </div>
+        <div class="filters">
+            <select id="brandSelect"><option value="">Все марки</option></select>
+            <select id="categorySelect"><option value="">Все категории</option></select>
+            <div class="price-filter">
+                <input type="number" id="priceMin" placeholder="Цена от" class="price-input" min="0">
+                <input type="number" id="priceMax" placeholder="до" class="price-input" min="0">
+            </div>
+            <button class="fav-filter-btn" id="showFavoritesBtn">⭐</button>
+            <button class="reset-btn" id="resetFilterBtn">Сброс</button>
+        </div>
+    </div>
+
+    <div class="parts-list" id="partsContainer"></div>
+
+    <footer class="site-footer">
+        <div class="footer-grid">
+            <div class="footer-col"><h4>🚗 Авторазбор-44</h4><p>Б/у запчасти с гарантией. Оригинальные артикулы. Работаем с 2026 года.</p></div>
+            <div class="footer-col"><h4>📞 Контакты</h4><ul><li>📍 г. Кострома, ул. Примерная, 10</li><li>🕒 Ежедневно 9:00–19:00</li><li>📱 <a href="https://t.me/Auto44razbor_bot">Telegram</a></li><li>📧 info@avtorazbor44.ru</li></ul></div>
+            <div class="footer-col"><h4>ℹ️ Информация</h4><ul><li><a href="#">Условия гарантии</a></li><li><a href="#">Возврат и обмен</a></li><li><a href="#">Как заказать</a></li><li><a href="#">Доставка</a></li></ul></div>
+            <div class="footer-col"><h4>🔗 Соцсети</h4><div class="social-icons"><a href="#">📢</a><a href="#">💬</a><a href="#">🌐</a></div></div>
+        </div>
+        <div class="footer-bottom">© <span id="currentYear">2025</span> Авторазбор-44. Все права защищены.</div>
+    </footer>
+</div>
+
+<!-- Модальные окна (добавление, деталь, вход) – без изменений, но с моделями -->
+<div class="modal-overlay" id="modalOverlay">
+    <div class="modal">
+        <h3>➕ Новая деталь</h3>
+        <form id="addPartForm" autocomplete="off">
+            <div class="form-row">
+                <div class="form-group"><label>Марка авто</label><select id="partBrand" required><option value="">Выберите</option></select></div>
+                <div class="form-group"><label>Модель</label>
+                    <select id="partModelSelect"><option value="">Выберите модель</option></select>
+                    <input type="text" id="partModelCustom" placeholder="Другая модель" style="display:none; margin-top: 6px;">
+                    <small style="color:#888; margin-top:4px;">Выберите из списка или введите свою</small>
+                </div>
+            </div>
+            <div class="form-group"><label>Категория</label><select id="partCategory" required><option value="">Выберите категорию</option><option value="Двигатель">Двигатель и компоненты</option><option value="Трансмиссия">Трансмиссия</option><option value="Кузов">Кузов / оптика</option><option value="Подвеска">Подвеска / рулевое</option><option value="Электрика">Электрика</option><option value="Салон">Салон</option><option value="Тормоза">Тормозная система</option><option value="Выхлоп">Выхлопная система</option><option value="Прочее">Прочее</option></select></div>
+            <div class="form-row">
+                <div class="form-group"><label>🔢 Артикул</label><input type="text" id="partArticle" required></div>
+                <div class="form-group"><label>Код двигателя / кузова</label><input type="text" id="partEngineCode"></div>
+            </div>
+            <div class="form-group"><label>Название детали</label><input type="text" id="partName" required></div>
+            <div class="form-row">
+                <div class="form-group"><label>Цена (₽)</label><input type="number" id="partPrice" required min="0"></div>
+                <div class="form-group"><label>Состояние</label><select id="partCondition"><option value="Б/У">Б/У</option><option value="Новая">Новая</option><option value="Восстановленная">Восстановленная</option></select></div>
+            </div>
+            <div class="form-group">
+                <label>Фотографии</label>
+                <input type="file" id="photoFiles" accept="image/*" multiple style="display:none;">
+                <label for="photoFiles" class="file-input-label">📷 Выбрать фото (макс. 10)</label>
+                <div class="photo-upload-area" id="photoPreviewArea"></div>
+                <progress id="uploadProgress" value="0" max="100" style="width:100%; display:none;"></progress>
+            </div>
+            <div class="form-group"><label>Описание</label><textarea id="partDescription" rows="2"></textarea></div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-secondary" id="closeModalBtn">Отмена</button>
+                <button type="submit" class="btn btn-primary">Добавить</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="detail-overlay" id="detailOverlay">
+    <div class="detail-modal">
+        <button class="detail-close" id="closeDetailBtn">&times;</button>
+        <div class="detail-main-image" id="detailMainImage"></div>
+        <div class="detail-thumbnails" id="detailThumbnails"></div>
+        <div class="detail-info">
+            <h2 id="detailName"></h2>
+            <div class="detail-meta" id="detailMeta"></div>
+            <div class="price" id="detailPrice"></div>
+            <div class="detail-description" id="detailDescription"></div>
+            <div class="detail-actions">
+                <a href="#" class="btn btn-primary" id="detailContactBtn" target="_blank">💬 Написать</a>
+                <button class="btn btn-secondary" id="detailDeleteBtn" style="display:none;">🗑️ Удалить</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="auth-modal" id="authModal">
+    <h3>Вход</h3>
+    <input type="email" id="authEmail" placeholder="Email">
+    <input type="password" id="authPassword" placeholder="Пароль">
+    <button class="btn btn-primary" id="authSubmit">Войти</button>
+    <button class="btn btn-secondary" id="authCancel">Отмена</button>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+
+<script>
+    const BOT_USERNAME = 'Auto44razbor_bot';
+    const IMGBB_API_KEY = '6eb431f54e2e9a837e4a00dd60c74ea4';
+    const firebaseConfig = {
+        apiKey: "AIzaSyCKKjBpJIB9yKsrD1x2LevxmFrnFvIT3AE",
+        authDomain: "autorazbor-44.firebaseapp.com",
+        databaseURL: "https://autorazbor-44-default-rtdb.asia-southeast1.firebasedatabase.app",
+        projectId: "autorazbor-44",
+        storageBucket: "autorazbor-44.firebasestorage.app",
+        messagingSenderId: "51006212696",
+        appId: "1:51006212696:web:DC1BDAA15de72f979ad82D"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const database = firebase.database();
+    const auth = firebase.auth();
+    const partsRef = database.ref('parts');
+
+    const BRANDS = ['Audi','BMW','Chery','Chevrolet','Ford','Geely','Honda','Hyundai','Kia','Lada','Land Rover','Lexus','Mazda','Mercedes-Benz','Mitsubishi','Nissan','Opel','Peugeot','Renault','Skoda','Subaru','Suzuki','Toyota','Volkswagen','Volvo','ГАЗ','УАЗ'];
+
+    // Модельный ряд
+    const MODELS = {
+        'Audi': ['A3', 'A4', 'A6', 'Q3', 'Q5', 'Q7', 'TT'],
+        'BMW': ['3 Series', '5 Series', 'X3', 'X5', 'X6'],
+        'Chery': ['Tiggo', 'Arrizo', 'Bonus'],
+        'Chevrolet': ['Cruze', 'Aveo', 'Lacetti', 'Camaro', 'Niva'],
+        'Ford': ['Focus', 'Mondeo', 'Kuga', 'Explorer', 'Fiesta'],
+        'Geely': ['Atlas', 'Coolray', 'Emgrand'],
+        'Honda': ['Civic', 'Accord', 'CR-V', 'Pilot'],
+        'Hyundai': ['Solaris', 'Elantra', 'Tucson', 'Santa Fe', 'Creta'],
+        'Kia': ['Rio', 'Cerato', 'Sportage', 'Sorento', 'Optima'],
+        'Lada': ['Granta', 'Vesta', 'Niva', 'Largus', 'XRAY'],
+        'Land Rover': ['Range Rover', 'Discovery', 'Defender', 'Evoque'],
+        'Lexus': ['RX', 'NX', 'ES', 'LX'],
+        'Mazda': ['3', '6', 'CX-5', 'CX-9'],
+        'Mercedes-Benz': ['C-Class', 'E-Class', 'S-Class', 'GLC', 'GLE'],
+        'Mitsubishi': ['Lancer', 'Outlander', 'Pajero', 'ASX'],
+        'Nissan': ['Qashqai', 'X-Trail', 'Juke', 'Murano', 'Patrol'],
+        'Opel': ['Astra', 'Corsa', 'Mokka', 'Insignia'],
+        'Peugeot': ['308', '408', '3008', '508'],
+        'Renault': ['Logan', 'Sandero', 'Duster', 'Kaptur', 'Megane'],
+        'Skoda': ['Octavia', 'Rapid', 'Kodiaq', 'Superb'],
+        'Subaru': ['Forester', 'Outback', 'Impreza', 'XV'],
+        'Suzuki': ['Swift', 'Vitara', 'Jimny', 'SX4'],
+        'Toyota': ['Camry', 'Corolla', 'RAV4', 'Land Cruiser', 'Highlander'],
+        'Volkswagen': ['Polo', 'Golf', 'Passat', 'Tiguan', 'Touareg'],
+        'Volvo': ['XC60', 'XC90', 'S60', 'S90'],
+        'ГАЗ': ['Volga', 'Gazelle', 'Sobol'],
+        'УАЗ': ['Patriot', 'Hunter', 'Pickup']
+    };
+
+    let parts = [];
+    let isAdmin = false;
+    let showFavoritesOnly = false;
+    const FAVORITES_KEY = 'autoparts_favorites';
+
+    // DOM elements
+    const partsContainer = document.getElementById('partsContainer');
+    const searchInput = document.getElementById('searchInput');
+    const searchBtn = document.getElementById('searchBtn');
+    const brandSelect = document.getElementById('brandSelect');
+    const categorySelect = document.getElementById('categorySelect');
+    const resetFilterBtn = document.getElementById('resetFilterBtn');
+    const openAddModalBtn = document.getElementById('openAddModalBtn');
+    const modalOverlay = document.getElementById('modalOverlay');
+    const closeModalBtn = document.getElementById('closeModalBtn');
+    const addPartForm = document.getElementById('addPartForm');
+    const partBrandSelect = document.getElementById('partBrand');
+    const partModelSelect = document.getElementById('partModelSelect');
+    const partModelCustom = document.getElementById('partModelCustom');
+    const photoFilesInput = document.getElementById('photoFiles');
+    const photoPreviewArea = document.getElementById('photoPreviewArea');
+    const uploadProgress = document.getElementById('uploadProgress');
+    const detailOverlay = document.getElementById('detailOverlay');
+    const closeDetailBtn = document.getElementById('closeDetailBtn');
+    const detailMainImage = document.getElementById('detailMainImage');
+    const detailThumbnails = document.getElementById('detailThumbnails');
+    const detailName = document.getElementById('detailName');
+    const detailMeta = document.getElementById('detailMeta');
+    const detailPrice = document.getElementById('detailPrice');
+    const detailDescription = document.getElementById('detailDescription');
+    const detailContactBtn = document.getElementById('detailContactBtn');
+    const detailDeleteBtn = document.getElementById('detailDeleteBtn');
+    let currentDetailPart = null;
+
+    const loginBtn = document.getElementById('loginBtn');
+    const logoutBtn = document.getElementById('logoutBtn');
+    const authModal = document.getElementById('authModal');
+    const authEmail = document.getElementById('authEmail');
+    const authPassword = document.getElementById('authPassword');
+    const authSubmit = document.getElementById('authSubmit');
+    const authCancel = document.getElementById('authCancel');
+    let selectedFiles = [];
+
+    // Избранное
+    function getFavorites() { try { return JSON.parse(localStorage.getItem(FAVORITES_KEY)) || []; } catch (e) { return []; } }
+    function saveFavorites(list) { localStorage.setItem(FAVORITES_KEY, JSON.stringify(list)); }
+    function isFavorite(id) { return getFavorites().includes(id); }
+    function toggleFavorite(id) {
+        const favs = getFavorites();
+        const idx = favs.indexOf(id);
+        if (idx > -1) favs.splice(idx, 1);
+        else favs.push(id);
+        saveFavorites(favs);
+        applyFilters();
+    }
+
+    // Авторизация
+    auth.onAuthStateChanged(user => {
+        if (user) {
+            isAdmin = true;
+            loginBtn.style.display = 'none';
+            logoutBtn.style.display = 'inline-block';
+            openAddModalBtn.style.display = 'flex';
+            document.querySelectorAll('.delete-btn').forEach(b => b.classList.add('visible'));
+            if (currentDetailPart) detailDeleteBtn.style.display = 'block';
+        } else {
+            isAdmin = false;
+            loginBtn.style.display = 'inline-block';
+            logoutBtn.style.display = 'none';
+            openAddModalBtn.style.display = 'none';
+            document.querySelectorAll('.delete-btn').forEach(b => b.classList.remove('visible'));
+            detailDeleteBtn.style.display = 'none';
+        }
+    });
+
+    loginBtn.addEventListener('click', () => authModal.classList.add('active'));
+    authCancel.addEventListener('click', () => authModal.classList.remove('active'));
+    logoutBtn.addEventListener('click', () => auth.signOut());
+    authSubmit.addEventListener('click', async () => {
+        const email = authEmail.value.trim();
+        const password = authPassword.value;
+        if (!email || !password) return alert('Введите email и пароль');
+        try {
+            await auth.signInWithEmailAndPassword(email, password);
+            authModal.classList.remove('active');
+            authEmail.value = '';
+            authPassword.value = '';
+        } catch (e) { alert('Ошибка входа: ' + e.message); }
+    });
+
+    function populateSelects() {
+        brandSelect.innerHTML = '<option value="">Все марки</option>' + BRANDS.map(b => `<option value="${b}">${b}</option>`).join('');
+        partBrandSelect.innerHTML = '<option value="">Выберите</option>' + BRANDS.map(b => `<option value="${b}">${b}</option>`).join('');
+        const categories = ['Двигатель','Трансмиссия','Кузов','Подвеска','Электрика','Салон','Тормоза','Выхлоп','Прочее'];
+        categorySelect.innerHTML = '<option value="">Все категории</option>' + categories.map(c => `<option value="${c}">${c}</option>`).join('');
+    }
+    populateSelects();
+
+    // Динамическое обновление моделей
+    partBrandSelect.addEventListener('change', function() {
+        const brand = this.value;
+        partModelSelect.innerHTML = '<option value="">Выберите модель</option>';
+        partModelCustom.style.display = 'none';
+        partModelCustom.value = '';
+        if (brand && MODELS[brand]) {
+            MODELS[brand].forEach(m => {
+                const opt = document.createElement('option');
+                opt.value = m;
+                opt.textContent = m;
+                partModelSelect.appendChild(opt);
+            });
+            const otherOpt = document.createElement('option');
+            otherOpt.value = 'OTHER';
+            otherOpt.textContent = 'Другая...';
+            partModelSelect.appendChild(otherOpt);
+        }
+    });
+    partModelSelect.addEventListener('change', function() {
+        if (this.value === 'OTHER') {
+            partModelCustom.style.display = 'block';
+            partModelCustom.focus();
+        } else {
+            partModelCustom.style.display = 'none';
+            partModelCustom.value = '';
+        }
+    });
+
+    photoFilesInput.addEventListener('change', function(e) {
+        selectedFiles = Array.from(e.target.files).slice(0, 10);
+        renderPhotoPreviews(selectedFiles);
+    });
+    function renderPhotoPreviews(files) {
+        photoPreviewArea.innerHTML = '';
+        files.forEach((file, index) => {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const div = document.createElement('div');
+                div.className = 'thumb';
+                div.style.backgroundImage = `url(${e.target.result})`;
+                const rm = document.createElement('span');
+                rm.className = 'remove'; rm.textContent = '×';
+                rm.addEventListener('click', ev => { ev.stopPropagation(); removeFile(index); });
+                div.appendChild(rm);
+                photoPreviewArea.appendChild(div);
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+    function removeFile(index) {
+        selectedFiles = selectedFiles.filter((_, i) => i !== index);
+        const dt = new DataTransfer();
+        selectedFiles.forEach(f => dt.items.add(f));
+        photoFilesInput.files = dt.files;
+        renderPhotoPreviews(selectedFiles);
+    }
+
+    partsRef.on('value', snapshot => {
+        const data = snapshot.val();
+        parts = data ? Object.keys(data).map(key => ({ id: key, ...data[key] })) : [];
+        applyFilters();
+        const urlParams = new URLSearchParams(window.location.search);
+        const partId = urlParams.get('id');
+        if (partId && !currentDetailPart) {
+            const part = parts.find(p => p.id === partId);
+            if (part) openDetailModal(part, false);
+        }
+    });
+
+    function escapeHTML(str) { return String(str).replace(/[&<>"]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[m]); }
+    function getImagesArray(part) { if (part.images && Array.isArray(part.images)) return part.images; if (part.image) return [part.image]; return []; }
+
+    async function uploadAllImages(files) {
+        const urls = [];
+        uploadProgress.style.display = 'block';
+        uploadProgress.max = files.length;
+        uploadProgress.value = 0;
+        for (const file of files) {
+            const formData = new FormData();
+            formData.append('image', file);
+            const resp = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, { method:'POST', body:formData });
+            if (!resp.ok) { const err = await resp.json(); throw new Error(err?.error?.message || 'Ошибка ImgBB'); }
+            const data = await resp.json();
+            urls.push(data.data.url);
+            uploadProgress.value = urls.length;
+        }
+        return urls;
+    }
+
+    function applyFilters() {
+        const minPrice = parseFloat(document.getElementById('priceMin').value) || 0;
+        const maxPrice = parseFloat(document.getElementById('priceMax').value) || Infinity;
+        renderParts(searchInput.value, brandSelect.value, categorySelect.value, minPrice, maxPrice);
+    }
+
+    function renderParts(filterText='', filterBrand='', filterCategory='', minPrice=0, maxPrice=Infinity) {
+        let source = parts;
+        if (showFavoritesOnly) {
+            const favIds = getFavorites();
+            source = parts.filter(p => favIds.includes(p.id));
+        }
+        const filtered = source.filter(part => {
+            const s = filterText.toLowerCase();
+            const matchText = !filterText || (part.article&&part.article.toLowerCase().includes(s)) || (part.name&&part.name.toLowerCase().includes(s)) || (part.model&&part.model.toLowerCase().includes(s)) || (part.engineCode&&part.engineCode.toLowerCase().includes(s));
+            const matchBrand = !filterBrand || part.brand === filterBrand;
+            const matchCategory = !filterCategory || part.category === filterCategory;
+            const price = Number(part.price) || 0;
+            const matchPrice = price >= minPrice && price <= maxPrice;
+            return matchText && matchBrand && matchCategory && matchPrice;
+        });
+        if (filtered.length === 0) {
+            partsContainer.innerHTML = `<div class="empty-state">🔧<p>Деталей не найдено</p><small>Попробуйте изменить фильтры</small></div>`;
+            return;
+        }
+        partsContainer.innerHTML = filtered.map(part => {
+            const images = getImagesArray(part);
+            const imgStyle = images.length > 0 ? `background-image: url('${images[0].replace(/'/g, "\\'")}');` : '';
+            const imgContent = images.length === 0 ? '🔩' : '';
+            const contactLink = `https://t.me/${BOT_USERNAME}?text=${encodeURIComponent(`Здравствуйте! Интересует деталь: ${part.name} (арт. ${part.article}) за ${part.price}₽.`)}`;
+            return `
+            <div class="card" data-id="${part.id}" data-part='${JSON.stringify(part).replace(/'/g, "&#39;")}'>
+                <div class="card-img" style="${imgStyle}">${imgContent}</div>
+                <div class="card-info">
+                    <div class="card-title">${escapeHTML(part.name)}</div>
+                    <div class="card-meta">
+                        <span class="badge">${escapeHTML(part.brand)} ${part.model ? escapeHTML(part.model) : ''}</span>
+                        <span class="badge article">${escapeHTML(part.article)}</span>
+                        ${part.engineCode ? `<span class="badge">⚙️ ${escapeHTML(part.engineCode)}</span>` : ''}
+                        <span class="badge category">${escapeHTML(part.category || 'Прочее')}</span>
+                    </div>
+                    <div class="price">${Number(part.price).toLocaleString('ru-RU')} ₽</div>
+                </div>
+                <div class="card-actions">
+                    <button class="fav-btn" data-id="${part.id}">${isFavorite(part.id) ? '❤️' : '🤍'}</button>
+                    <a href="${contactLink}" target="_blank" class="contact-btn">💬</a>
+                    <button class="delete-btn ${isAdmin ? 'visible' : ''}" data-id="${part.id}">🗑️</button>
+                </div>
+            </div>`;
+        }).join('');
+
+        document.querySelectorAll('.card').forEach(card => {
+            card.addEventListener('click', function(e) {
+                if (e.target.closest('.delete-btn') || e.target.closest('.contact-btn') || e.target.closest('.fav-btn')) return;
+                const partData = JSON.parse(this.getAttribute('data-part'));
+                openDetailModal(partData, true);
+            });
+        });
+        document.querySelectorAll('.fav-btn').forEach(btn => {
+            btn.addEventListener('click', function(e) { e.stopPropagation(); toggleFavorite(this.dataset.id); });
+        });
+        document.querySelectorAll('.delete-btn').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                if (!isAdmin) return alert('Только администратор');
+                if (confirm('Удалить?')) partsRef.child(this.dataset.id).remove();
+            });
+        });
+    }
+
+    function openDetailModal(part, updateHistory = true) {
+        currentDetailPart = part;
+        const images = getImagesArray(part);
+        if (images.length) {
+            detailMainImage.style.backgroundImage = `url('${images[0]}')`;
+            detailMainImage.style.backgroundSize = 'cover';
+            detailMainImage.textContent = '';
+        } else {
+            detailMainImage.style.backgroundImage = '';
+            detailMainImage.textContent = '🔩';
+        }
+        detailThumbnails.innerHTML = images.map((url, i) => `<div class="detail-thumb ${i===0?'active':''}" style="background-image:url('${url}')" data-index="${i}"></div>`).join('');
+        detailThumbnails.querySelectorAll('.detail-thumb').forEach(thumb => {
+            thumb.addEventListener('click', () => {
+                const idx = thumb.dataset.index;
+                detailMainImage.style.backgroundImage = `url('${images[idx]}')`;
+                detailThumbnails.querySelectorAll('.detail-thumb').forEach(t => t.classList.remove('active'));
+                thumb.classList.add('active');
+            });
+        });
+        detailName.textContent = part.name;
+        detailPrice.textContent = `${Number(part.price).toLocaleString('ru-RU')} ₽`;
+        let meta = '';
+        if (part.brand) meta += `<span class="badge">${escapeHTML(part.brand)}</span>`;
+        if (part.model) meta += `<span class="badge">${escapeHTML(part.model)}</span>`;
+        if (part.article) meta += `<span class="badge article">${escapeHTML(part.article)}</span>`;
+        if (part.engineCode) meta += `<span class="badge">⚙️ ${escapeHTML(part.engineCode)}</span>`;
+        if (part.category) meta += `<span class="badge category">${escapeHTML(part.category)}</span>`;
+        if (part.condition) meta += `<span class="badge">${escapeHTML(part.condition)}</span>`;
+        detailMeta.innerHTML = meta;
+        detailDescription.textContent = part.description || 'Описание отсутствует';
+        detailContactBtn.href = `https://t.me/${BOT_USERNAME}?text=${encodeURIComponent(`Здравствуйте! Интересует ${part.name} (арт. ${part.article}) за ${part.price}₽.`)}`;
+        detailDeleteBtn.style.display = isAdmin ? 'block' : 'none';
+        if (updateHistory && window.history) {
+            const url = new URL(window.location);
+            url.searchParams.set('id', part.id);
+            window.history.pushState({ id: part.id }, '', url);
+        }
+        detailOverlay.classList.add('active');
+    }
+    function closeDetailModal() {
+        if (window.history) {
+            const url = new URL(window.location);
+            url.searchParams.delete('id');
+            window.history.replaceState(null, '', url);
+        }
+        detailOverlay.classList.remove('active');
+        currentDetailPart = null;
+    }
+    closeDetailBtn.addEventListener('click', closeDetailModal);
+    detailOverlay.addEventListener('click', e => { if (e.target === detailOverlay) closeDetailModal(); });
+    detailDeleteBtn.addEventListener('click', () => {
+        if (!currentDetailPart || !isAdmin) return;
+        if (confirm('Удалить?')) { partsRef.child(currentDetailPart.id).remove(); closeDetailModal(); }
+    });
+
+    addPartForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        if (!isAdmin) return alert('Только администратор');
+        const brand = partBrandSelect.value;
+        const category = document.getElementById('partCategory').value;
+        const article = document.getElementById('partArticle').value.trim();
+        const name = document.getElementById('partName').value.trim();
+        const price = parseFloat(document.getElementById('partPrice').value);
+        const description = document.getElementById('partDescription').value.trim();
+        if (!brand || !category) return alert('Марка и категория обязательны');
+        if (!article || !name) return alert('Артикул и название обязательны');
+        if (isNaN(price) || price < 0) return alert('Некорректная цена');
+
+        // Определяем модель
+        let model = partModelSelect.value;
+        if (model === 'OTHER' || model === '') {
+            model = partModelCustom.value.trim();
+        }
+        if (!model) model = ''; // если вообще не указано
+
+        const submitBtn = addPartForm.querySelector('button[type="submit"]');
+        submitBtn.disabled = true; submitBtn.textContent = 'Загрузка...';
+        try {
+            let images = [];
+            if (selectedFiles.length) images = await uploadAllImages(selectedFiles);
+            await partsRef.push({
+                brand, model, category, article,
+                engineCode: document.getElementById('partEngineCode').value.trim(),
+                name, price,
+                condition: document.getElementById('partCondition').value,
+                images, description,
+                createdAt: firebase.database.ServerValue.TIMESTAMP
+            });
+            closeModalFn();
+        } catch (err) { alert('Ошибка: ' + err.message); }
+        finally { submitBtn.disabled = false; submitBtn.textContent = 'Добавить'; uploadProgress.style.display = 'none'; }
+    });
+
+    function closeModalFn() {
+        modalOverlay.classList.remove('active');
+        addPartForm.reset();
+        photoPreviewArea.innerHTML = '';
+        selectedFiles = [];
+        photoFilesInput.value = '';
+        partModelSelect.innerHTML = '<option value="">Выберите модель</option>';
+        partModelCustom.style.display = 'none';
+        uploadProgress.style.display = 'none';
+    }
+
+    openAddModalBtn.addEventListener('click', () => {
+        if (!isAdmin) return alert('Сначала войдите');
+        modalOverlay.classList.add('active');
+    });
+    closeModalBtn.addEventListener('click', closeModalFn);
+    modalOverlay.addEventListener('click', e => { if (e.target === modalOverlay) closeModalFn(); });
+
+    searchBtn.addEventListener('click', applyFilters);
+    searchInput.addEventListener('keyup', e => { if (e.key==='Enter') applyFilters(); });
+    brandSelect.addEventListener('change', applyFilters);
+    categorySelect.addEventListener('change', applyFilters);
+    document.getElementById('priceMin').addEventListener('input', applyFilters);
+    document.getElementById('priceMax').addEventListener('input', applyFilters);
+    document.getElementById('showFavoritesBtn').addEventListener('click', function() {
+        showFavoritesOnly = !showFavoritesOnly;
+        this.classList.toggle('active', showFavoritesOnly);
+        applyFilters();
+    });
+    resetFilterBtn.addEventListener('click', () => {
+        searchInput.value = '';
+        brandSelect.value = '';
+        categorySelect.value = '';
+        document.getElementById('priceMin').value = '';
+        document.getElementById('priceMax').value = '';
+        showFavoritesOnly = false;
+        document.getElementById('showFavoritesBtn').classList.remove('active');
+        applyFilters();
+    });
+    window.addEventListener('popstate', () => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const partId = urlParams.get('id');
+        if (partId) {
+            if (currentDetailPart && currentDetailPart.id === partId) return;
+            const part = parts.find(p => p.id === partId);
+            if (part) openDetailModal(part, false);
+        } else closeDetailModal();
+    });
+    document.getElementById('currentYear').textContent = new Date().getFullYear();
+</script>
+</body>
+</html>
