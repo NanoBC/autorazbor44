@@ -311,6 +311,24 @@
         .footer-bottom { text-align: center; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 1.5rem; font-size: 0.8rem; color: #7a8a9a; }
         @media (min-width: 768px) { .footer-grid { grid-template-columns: repeat(3, 1fr); } }
         @media (min-width: 1024px) { .footer-grid { grid-template-columns: 2fr 1fr 1fr 1fr; } }
+        /* Фикс: видимость опций в селектах */
+        select option {
+        background: #132d47;   /* темный фон, как у формы */
+        color: white;          /* белый текст */
+        }
+
+        /* Дополнительно: для более точного контроля на некоторых браузерах */
+        select {
+        color: white; /* основной цвет текста */
+        }
+
+        /* Убираем возможное влияние инверсии на мобильных */
+        @media (hover: hover) {
+        select option:hover {
+        background: #f7931e;
+        color: white;
+            }
+        }
     </style>
 </head>
 <body>
